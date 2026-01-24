@@ -62,22 +62,23 @@ class SkillsFetcher:
 
                 # 导航到页面
                 print("  正在加载页面...")
-                await page.goto(self.trending_url, wait_until="domcontentloaded")
+                await page.goto(self.trending_url, wait_until="networkidle")
 
-                # 等待排行榜加载 - 等待第一个技能项出现
-                print("  等待排行榜加载...")
-                try:
-                    await page.wait_for_selector('text=Skills Leaderboard', timeout=10000)
-                    # 再等待第一个技能出现（格式: 1\n\n### skill-name）
-                    await page.wait_for_selector('text=### ', timeout=10000)
-                except:
-                    print("  ⚠️ 排行榜加载异常，尝试继续...")
+                # 等待排行榜内容加载 - 使用 JavaScript 检查
+                print("  等待排行榜内容...")
+                await page.wait_for_function(
+                    "() => document.body.innerText.includes('Skills Leaderboard') && document.body.innerText.includes('Installs')",
+                    timeout=30000
+                )
 
-                # 等待页面完全加载
-                await page.wait_for_load_state("networkidle", timeout=10000)
+                # 额外等待确保数据完全渲染
+                await asyncio.sleep(2)
 
-                # 获取页面文本内容（而非 HTML）
+                # 获取页面文本内容
                 content = await page.evaluate("() => document.body.innerText")
+
+                # 调试：检查内容长度
+                print(f"  页面内容长度: {len(content)} 字符")
 
                 # 解析排行榜
                 skills = self.parse_leaderboard(content)
