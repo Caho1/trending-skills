@@ -41,59 +41,77 @@ class SkillsFetcher:
         return asyncio.run(self._fetch_async())
 
     async def _fetch_async(self) -> List[Dict]:
-        """异步获取数据"""
-        try:
-            async with async_playwright() as p:
-                # 启动浏览器 - CI 环境使用 headless 模式
-                browser = await p.chromium.launch(
-                    headless=True,
-                    args=[
-                        '--disable-dev-shm-usage',
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                    ]
-                )
+        """异步获取数据 - 带重试机制"""
+        max_retries = 3
+        retry_delay = 5
 
-                # 创建页面
-                page = await browser.new_page()
+        for attempt in range(max_retries):
+            try:
+                async with async_playwright() as p:
+                    # 启动浏览器 - CI 环境使用 headless 模式
+                    browser = await p.chromium.launch(
+                        headless=True,
+                        args=[
+                            '--disable-dev-shm-usage',
+                            '--no-sandbox',
+                            '--disable-setuid-sandbox',
+                            '--disable-blink-features=AutomationControlled',
+                        ]
+                    )
 
-                # 设置超时
-                page.set_default_timeout(self.timeout)
+                    # 创建页面
+                    page = await browser.new_page()
 
-                # 导航到页面
-                print("  正在加载页面...")
-                await page.goto(self.trending_url, wait_until="networkidle")
+                    # 设置用户代理，避免被识别为机器人
+                    await page.set_extra_http_headers({
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    })
 
-                # 等待排行榜内容加载 - 使用 JavaScript 检查
-                print("  等待排行榜内容...")
-                await page.wait_for_function(
-                    "() => document.body.innerText.includes('Skills Leaderboard') && document.body.innerText.includes('Installs')",
-                    timeout=30000
-                )
+                    # 导航到页面
+                    print(f"  正在加载页面... (尝试 {attempt + 1}/{max_retries})")
+                    await page.goto(self.trending_url, wait_until="domcontentloaded", timeout=60000)
 
-                # 额外等待确保数据完全渲染
-                await asyncio.sleep(2)
+                    # 等待页面稳定
+                    await asyncio.sleep(5)
 
-                # 获取页面文本内容
-                content = await page.evaluate("() => document.body.innerText")
+                    # 尝试滚动页面以确保内容加载
+                    try:
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+                        await asyncio.sleep(2)
+                    except:
+                        pass
 
-                # 调试：检查内容长度
-                print(f"  页面内容长度: {len(content)} 字符")
+                    # 获取页面文本内容
+                    content = await page.evaluate("() => document.body.innerText")
 
-                # 解析排行榜
-                skills = self.parse_leaderboard(content)
+                    # 调试：检查内容
+                    print(f"  页面内容长度: {len(content)} 字符")
 
-                await browser.close()
+                    # 检查是否包含关键内容
+                    if "Skills Leaderboard" not in content and "Leaderboard" not in content:
+                        print(f"  ⚠️ 未找到排行榜标题，等待更长时间...")
+                        await asyncio.sleep(10)
+                        content = await page.evaluate("() => document.body.innerText")
 
-                if skills:
-                    print(f"✅ 成功获取 {len(skills)} 个技能")
-                    return skills
+                    await browser.close()
 
-                raise Exception("无法从页面解析技能列表")
+                    # 解析排行榜
+                    skills = self.parse_leaderboard(content)
 
-        except Exception as e:
-            print(f"❌ 获取榜单失败: {e}")
-            raise
+                    if skills:
+                        print(f"✅ 成功获取 {len(skills)} 个技能")
+                        return skills
+
+                    raise Exception("无法从页面解析技能列表")
+
+            except Exception as e:
+                print(f"  ⚠️ 尝试 {attempt + 1} 失败: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                else:
+                    raise
+
+        raise Exception("获取失败：已达最大重试次数")
 
     def parse_leaderboard(self, html_content: str) -> List[Dict]:
         """
@@ -121,8 +139,8 @@ class SkillsFetcher:
                 break
 
         if leaderboard_start == -1:
-            # 调试：打印页面内容的前500字符
-            preview = html_content[:500] if html_content else "(空内容)"
+            # 调试：打印页面内容的前1000字符
+            preview = html_content[:1000] if html_content else "(空内容)"
             print(f"  ⚠️ 页面内容预览:\n{preview}")
             raise Exception("未找到 Skills Leaderboard 标题")
 
@@ -168,6 +186,7 @@ class SkillsFetcher:
                     }
 
             if skills_dict:
+                print(f"  使用模式匹配到 {len(skills_dict)} 个技能")
                 break
 
         # 按排名排序
