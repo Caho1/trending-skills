@@ -12,7 +12,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from src.config import (
-    ZHIPU_API_KEY,
+    OPENAI_API_KEY,
     RESEND_API_KEY,
     EMAIL_TO,
     RESEND_FROM_EMAIL,
@@ -54,18 +54,18 @@ def main():
     print_banner()
 
     # 检查环境变量
-    if not ZHIPU_API_KEY:
-        print("❌ 错误: ZHIPU_API_KEY 环境变量未设置")
-        print("   请设置 Claude API 的 Key")
+    if not OPENAI_API_KEY:
+        print("[错误] OPENAI_API_KEY 环境变量未设置")
+        print("   请设置 OpenAI 兼容 API 的 Key")
         sys.exit(1)
 
     if not RESEND_API_KEY:
-        print("❌ 错误: RESEND_API_KEY 环境变量未设置")
+        print("[错误] RESEND_API_KEY 环境变量未设置")
         print("   请设置 Resend API Key")
         sys.exit(1)
 
     if not EMAIL_TO:
-        print("❌ 错误: EMAIL_TO 环境变量未设置")
+        print("[错误] EMAIL_TO 环境变量未设置")
         print("   请设置收件人邮箱")
         sys.exit(1)
 
@@ -132,15 +132,15 @@ def main():
         sender = ResendSender(RESEND_API_KEY)
         result = sender.send_email(
             to=EMAIL_TO,
-            subject=f"📊 Skills Trending Daily - {today}",
+            subject=f"Skills Trending Daily - {today}",
             html_content=html_content,
             from_email=RESEND_FROM_EMAIL
         )
 
         if result["success"]:
-            print(f"   ✅ 邮件发送成功! ID: {result['id']}")
+            print(f"   [OK] 邮件发送成功! ID: {result['id']}")
         else:
-            print(f"   ❌ 邮件发送失败: {result['message']}")
+            print(f"   [错误] 邮件发送失败: {result['message']}")
         print()
 
         # 8. 清理过期数据
@@ -151,7 +151,7 @@ def main():
         # 完成
         print("╔════════════════════════════════════════════════════════════╗")
         print("║                                                              ║")
-        print("║   ✅ 任务完成!                                              ║")
+        print("║   [OK] 任务完成!                                              ║")
         print("║                                                              ║")
         print(f"║   日期: {today}                                            ║")
         print(f"║   技能数: {len(today_skills)}                                    ║")
@@ -161,7 +161,7 @@ def main():
         print("╚════════════════════════════════════════════════════════════╝")
 
     except KeyboardInterrupt:
-        print("\n⚠️ 用户中断")
+        print("\n[警告] 用户中断")
         sys.exit(130)
 
     except Exception as e:

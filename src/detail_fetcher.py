@@ -56,7 +56,7 @@ class DetailFetcher:
         results = []
         top_n = min(20, len(skills))
 
-        print(f"📥 开始抓取 Top {top_n} 详情...")
+        print(f"[抓取] 开始抓取 Top {top_n} 详情...")
 
         for i, skill in enumerate(skills[:top_n], 1):
             url = skill.get("url", "")
@@ -87,7 +87,7 @@ class DetailFetcher:
             if i < top_n:
                 time.sleep(self.delay)
 
-        print(f"✅ 成功抓取 {len(results)} 个技能详情")
+        print(f"[OK] 成功抓取 {len(results)} 个技能详情")
         return results
 
     def fetch_detail_page(self, url: str, skill_info: Dict = None) -> Optional[Dict]:
@@ -115,10 +115,10 @@ class DetailFetcher:
             return detail
 
         except requests.RequestException as e:
-            print(f"    ⚠️ 请求失败: {e}")
+            print(f"    [警告] 请求失败: {e}")
             return None
         except Exception as e:
-            print(f"    ⚠️ 解析失败: {e}")
+            print(f"    [警告] 解析失败: {e}")
             return None
 
     def parse_detail_page(self, html_content: str, url: str, skill_info: Dict) -> Dict:

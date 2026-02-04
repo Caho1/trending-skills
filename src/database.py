@@ -113,7 +113,7 @@ class Database:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_history_date ON skills_history(date)")
 
         self.conn.commit()
-        print(f"✅ 数据库初始化完成: {self.db_path}")
+        print(f"[OK] 数据库初始化完成: {self.db_path}")
 
     def save_today_data(self, date: str, skills: List[Dict]) -> None:
         """
@@ -156,7 +156,7 @@ class Database:
             ))
 
         self.conn.commit()
-        print(f"✅ 保存今日数据: {len(skills)} 条记录")
+        print(f"[OK] 保存今日数据: {len(skills)} 条记录")
 
     def get_skills_by_date(self, date: str) -> List[Dict]:
         """
@@ -225,7 +225,7 @@ class Database:
             ))
 
         self.conn.commit()
-        print(f"✅ 保存技能详情: {len(details)} 条记录")
+        print(f"[OK] 保存技能详情: {len(details)} 条记录")
 
     def get_skill_details(self, name: str) -> Optional[Dict]:
         """

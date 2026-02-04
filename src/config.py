@@ -2,19 +2,22 @@
 配置模块 - 包含所有配置信息和主题定义
 """
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# 加载 .env 文件
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
 
 # ============================================================================
-# Claude API 配置 (复用现有配置)
+# OpenAI 兼容 API 配置
 # ============================================================================
-ANTHROPIC_BASE_URL = os.getenv(
-    "ANTHROPIC_BASE_URL",
-    "https://open.bigmodel.cn/api/anthropic"
-)
-ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Claude 模型配置
-CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022")
-CLAUDE_MAX_TOKENS = 8192
+# 模型配置
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8192"))
 
 # ============================================================================
 # RSS 配置

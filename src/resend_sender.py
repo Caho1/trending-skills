@@ -42,7 +42,7 @@ class ResendSender:
             return {"success": False, "message": "收件人邮箱为空"}
 
         try:
-            print(f"📧 正在发送邮件到: {to}")
+            print(f"[发送] 正在发送邮件到: {to}")
 
             params = {
                 "from": from_email,
@@ -53,7 +53,7 @@ class ResendSender:
 
             response = resend.Emails.send(params)
 
-            print(f"✅ 邮件发送成功! ID: {response.get('id')}")
+            print(f"[OK] 邮件发送成功! ID: {response.get('id')}")
 
             return {
                 "success": True,
@@ -64,7 +64,7 @@ class ResendSender:
 
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ 邮件发送失败: {error_msg}")
+            print(f"[错误] 邮件发送失败: {error_msg}")
 
             return {
                 "success": False,
@@ -97,7 +97,7 @@ class ResendSender:
             return {"success": False, "message": "收件人邮箱为空"}
 
         try:
-            print(f"📧 正在发送邮件到: {to}")
+            print(f"[发送] 正在发送邮件到: {to}")
 
             params = {
                 "from": from_email,
@@ -111,7 +111,7 @@ class ResendSender:
 
             response = resend.Emails.send(params)
 
-            print(f"✅ 邮件发送成功! ID: {response.get('id')}")
+            print(f"[OK] 邮件发送成功! ID: {response.get('id')}")
 
             return {
                 "success": True,
@@ -122,7 +122,7 @@ class ResendSender:
 
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ 邮件发送失败: {error_msg}")
+            print(f"[错误] 邮件发送失败: {error_msg}")
 
             return {
                 "success": False,

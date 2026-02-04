@@ -1,7 +1,7 @@
 # AI Daily 依赖清单
 
-# Claude API SDK
-anthropic>=0.40.0
+# OpenAI 兼容 API SDK
+openai>=1.0.0
 
 # RSS 解析
 feedparser>=6.0.10

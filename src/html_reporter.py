@@ -31,11 +31,11 @@ class HTMLReporter:
         # Top 20 榜单
         html_parts.append(self._render_top_20(trends.get("top_20", [])))
 
-        # 上升 Top 5
-        html_parts.append(self._render_rising_top5(trends.get("rising_top5", [])))
-
-        # 下降 Top 5
-        html_parts.append(self._render_falling_top5(trends.get("falling_top5", [])))
+        # Rising/Falling 两列并排
+        rising = self._render_rising_top5(trends.get("rising_top5", []))
+        falling = self._render_falling_top5(trends.get("falling_top5", []))
+        if rising or falling:
+            html_parts.append(self._render_rising_falling_section(rising, falling))
 
         # 新晋/掉榜
         html_parts.append(self._render_new_dropped(
@@ -54,428 +54,229 @@ class HTMLReporter:
         return "\n".join(html_parts)
 
     def _get_header(self, date: str) -> str:
-        """生成 HTML 头部"""
+        """生成 HTML 头部 - 邮件兼容内联样式"""
         return """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skills Trending Daily</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8f9fa;
-            -webkit-font-smoothing: antialiased;
-        }
-        .container {
-            max-width: 640px;
-            margin: 0 auto;
-            background-color: #ffffff;
-        }
-        .header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: white;
-            padding: 40px 30px;
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 26px;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
-        .header p {
-            margin: 8px 0 0;
-            font-size: 14px;
-            opacity: 0.8;
-            font-weight: 400;
-        }
-        .section {
-            padding: 28px 30px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        .section:last-child {
-            border-bottom: none;
-        }
-        .section-title {
-            margin: 0 0 20px;
-            font-size: 15px;
-            font-weight: 600;
-            color: #1a1a2e;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #1a1a2e;
-        }
-        .skill-card {
-            margin-bottom: 16px;
-            padding: 0;
-            background-color: #ffffff;
-        }
-        .skill-card:last-child {
-            margin-bottom: 0;
-        }
-        .skill-main {
-            display: flex;
-            align-items: baseline;
-            padding: 14px 16px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-            border-left: 3px solid #1a1a2e;
-        }
-        .skill-rank {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1a1a2e;
-            min-width: 32px;
-        }
-        .skill-name {
-            font-size: 15px;
-            font-weight: 600;
-            color: #1a1a2e;
-            flex-grow: 1;
-            margin: 0 10px;
-        }
-        .skill-name a {
-            color: #1a1a2e;
-            text-decoration: none;
-        }
-        .skill-name a:hover {
-            text-decoration: underline;
-        }
-        .skill-stats {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 13px;
-        }
-        .rank-change {
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 12px;
-        }
-        .rank-up {
-            color: #059669;
-            background-color: #d1fae5;
-        }
-        .rank-down {
-            color: #dc2626;
-            background-color: #fee2e2;
-        }
-        .rank-same {
-            color: #6b7280;
-            background-color: #f3f4f6;
-        }
-        .installs {
-            color: #6b7280;
-            font-size: 13px;
-        }
-        .skill-content {
-            padding: 12px 16px 0;
-        }
-        .skill-summary {
-            color: #4b5563;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-        .skill-meta {
-            font-size: 13px;
-            color: #6b7280;
-            margin-bottom: 10px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            margin-right: 6px;
-            margin-bottom: 4px;
-        }
-        .badge-category {
-            background-color: #e5e7eb;
-            color: #374151;
-        }
-        .badge-new {
-            background-color: #059669;
-            color: white;
-        }
-        .badge-alert {
-            background-color: #dc2626;
-            color: white;
-        }
-        .badge-surging {
-            background-color: #d97706;
-            color: white;
-        }
-        .solves-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .solve-tag {
-            background-color: #f3f4f6;
-            color: #4b5563;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        .divider {
-            height: 1px;
-            background-color: #e9ecef;
-            margin: 0;
-            border: none;
-        }
-        .footer {
-            text-align: center;
-            padding: 28px 20px;
-            font-size: 12px;
-            color: #6b7280;
-            background-color: #f8f9fa;
-        }
-        .footer a {
-            color: #1a1a2e;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .footer a:hover {
-            text-decoration: underline;
-        }
-        .empty {
-            text-align: center;
-            color: #9ca3af;
-            padding: 24px;
-            font-size: 14px;
-        }
-        .compact-card {
-            padding: 12px 14px;
-            margin-bottom: 8px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-            border-left: 3px solid #e5e7eb;
-        }
-        .compact-card:last-child {
-            margin-bottom: 0;
-        }
-    </style>
+    <title>技能趋势日报</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Skills Trending Daily</h1>
-            <p>""" + date + """</p>
+<body style="margin: 0; padding: 16px; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+    <div style="max-width: 680px; margin: 0 auto; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%); color: #FFFFFF; padding: 32px 24px; text-align: center;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">技能趋势日报</h1>
+            <p style="margin: 12px 0 0 0; color: #BFDBFE; font-size: 14px;">""" + date + """</p>
         </div>"""
 
     def _get_footer(self, date: str) -> str:
-        """生成 HTML 尾部"""
-        return """        <div class="footer">
-            <p>Powered by <a href="https://skills.sh/trending">Skills.sh</a></p>
-            <p style="margin-top: 8px; color: #9ca3af;">Data source: skills.sh/trending</p>
+        """生成 HTML 尾部 - 邮件兼容内联样式"""
+        return """
+        <!-- Footer -->
+        <div style="background-color: #F8FAFC; text-align: center; padding: 24px; border-top: 1px solid #E2E8F0;">
+            <p style="margin: 0; color: #64748B; font-size: 13px;">
+                由 <a href="https://skills.sh/trending" style="color: #2563EB; font-weight: 600; text-decoration: none;">Skills.sh</a> 提供支持
+            </p>
+            <p style="margin: 8px 0 0 0; color: #94A3B8; font-size: 12px;">数据来源: skills.sh/trending</p>
         </div>
     </div>
 </body>
 </html>"""
 
     def _render_top_20(self, skills: List[Dict]) -> str:
-        """渲染 Top 20 榜单"""
+        """渲染 Top 20 榜单 - 邮件兼容内联样式"""
         if not skills:
-            return self._section_html("Top 20 Leaderboard", '<p class="empty">No data available</p>')
+            return self._section_html("Top 20 排行榜", '<p style="text-align: center; color: #94A3B8; padding: 24px 0;">暂无数据</p>')
 
-        cards = []
-        for skill in skills[:20]:
-            cards.append(self._format_skill_card(skill, show_details=True))
+        # 使用表格实现两列布局（邮件兼容）
+        cards = [self._format_skill_card(skill) for skill in skills[:20]]
 
-        return self._section_html("Top 20 Leaderboard", "\n".join(cards))
+        # 两列布局
+        rows = []
+        for i in range(0, len(cards), 2):
+            left = cards[i]
+            right = cards[i+1] if i+1 < len(cards) else '<td style="width: 50%; padding: 6px;"></td>'
+            if i+1 < len(cards):
+                right = f'<td style="width: 50%; padding: 6px; vertical-align: top;">{cards[i+1]}</td>'
+            else:
+                right = '<td style="width: 50%; padding: 6px;"></td>'
+            rows.append(f'<tr><td style="width: 50%; padding: 6px; vertical-align: top;">{left}</td>{right}</tr>')
+
+        content = f'<table style="width: 100%; border-collapse: collapse;">{"".join(rows)}</table>'
+        return self._section_html("Top 20 排行榜", content)
 
     def _render_rising_top5(self, skills: List[Dict]) -> str:
-        """渲染上升 Top 5"""
+        """渲染上升 Top 5 - 邮件兼容内联样式"""
         if not skills:
-            return ""
-
-        cards = []
-        for skill in skills:
-            cards.append(self._format_compact_card(skill, trend="up"))
-
-        return self._section_html("Rising Skills (Top 5)", "\n".join(cards))
+            return '<p style="color: #94A3B8; font-size: 13px; text-align: center; padding: 16px 0;">暂无数据</p>'
+        cards = [self._format_compact_card(skill, trend="up") for skill in skills]
+        return "".join(cards)
 
     def _render_falling_top5(self, skills: List[Dict]) -> str:
-        """渲染下降 Top 5"""
+        """渲染下降 Top 5 - 邮件兼容内联样式"""
         if not skills:
-            return ""
+            return '<p style="color: #94A3B8; font-size: 13px; text-align: center; padding: 16px 0;">暂无数据</p>'
+        cards = [self._format_compact_card(skill, trend="down") for skill in skills]
+        return "".join(cards)
 
-        cards = []
-        for skill in skills:
-            cards.append(self._format_compact_card(skill, trend="down"))
-
-        return self._section_html("Declining Skills (Top 5)", "\n".join(cards))
+    def _render_rising_falling_section(self, rising_html: str, falling_html: str) -> str:
+        """渲染 Rising/Falling 两列并排 - 邮件兼容内联样式"""
+        content = f'''<table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="width: 50%; padding: 0 8px 0 0; vertical-align: top;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #10B981; text-transform: uppercase; letter-spacing: 1px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #10B981; border-radius: 50%; margin-right: 8px;"></span>上升榜
+                    </h3>
+                    {rising_html}
+                </td>
+                <td style="width: 50%; padding: 0 0 0 8px; vertical-align: top;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #EF4444; text-transform: uppercase; letter-spacing: 1px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #EF4444; border-radius: 50%; margin-right: 8px;"></span>下降榜
+                    </h3>
+                    {falling_html}
+                </td>
+            </tr>
+        </table>'''
+        return self._section_html("趋势变化", content)
 
     def _render_new_dropped(self, new_entries: List[Dict], dropped: List[Dict]) -> str:
-        """渲染新晋/掉榜"""
+        """渲染新晋/掉榜 - 邮件兼容内联样式"""
         if not new_entries and not dropped:
             return ""
 
-        html = ""
-
-        # 新晋
+        new_html = '<p style="color: #94A3B8; font-size: 13px; text-align: center; padding: 16px 0;">暂无新晋</p>'
         if new_entries:
-            new_items = []
-            for skill in new_entries:
-                new_items.append(self._format_compact_card(skill, is_new=True))
+            items = [self._format_compact_card(s, is_new=True) for s in new_entries[:10]]
+            new_html = "".join(items)
 
-            html += "<h3 style='margin: 0 0 12px; font-size: 13px; color: #059669; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>New Entries</h3>"
-            html += "\n".join(new_items)
-
-        # 掉榜
+        dropped_html = '<p style="color: #94A3B8; font-size: 13px; text-align: center; padding: 16px 0;">暂无掉榜</p>'
         if dropped:
-            if new_entries:
-                html += "<hr class='divider' style='margin: 16px 0;'>"
+            items = [self._format_dropped_card(s) for s in dropped[:10]]
+            dropped_html = "".join(items)
 
-            dropped_items = []
-            for skill in dropped[:10]:
-                dropped_items.append(self._format_dropped_card(skill))
-
-            html += "<h3 style='margin: 0 0 12px; font-size: 13px; color: #dc2626; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;'>Dropped From List</h3>"
-            html += "\n".join(dropped_items)
-
-        return self._section_html("New & Dropped", html)
+        content = f'''<table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="width: 50%; padding: 0 8px 0 0; vertical-align: top;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #10B981; text-transform: uppercase; letter-spacing: 1px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #10B981; border-radius: 50%; margin-right: 8px;"></span>新晋
+                    </h3>
+                    {new_html}
+                </td>
+                <td style="width: 50%; padding: 0 0 0 8px; vertical-align: top;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: 600; color: #EF4444; text-transform: uppercase; letter-spacing: 1px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; background-color: #EF4444; border-radius: 50%; margin-right: 8px;"></span>掉榜
+                    </h3>
+                    {dropped_html}
+                </td>
+            </tr>
+        </table>'''
+        return self._section_html("新晋与掉榜", content)
 
     def _render_surging(self, skills: List[Dict]) -> str:
-        """渲染暴涨告警"""
+        """渲染暴涨告警 - 邮件兼容内联样式"""
         if not skills:
             return ""
-
-        cards = []
-        for skill in skills:
-            cards.append(self._format_compact_card(skill, is_surging=True))
-
-        return self._section_html("Trending Up", "\n".join(cards))
+        cards = [self._format_compact_card(skill, is_surging=True) for skill in skills]
+        content = "".join(cards)
+        return self._section_html("暴涨告警", content)
 
     def _format_skill_card(self, skill: Dict, show_details: bool = True) -> str:
-        """格式化单个技能卡片"""
+        """格式化单个技能卡片 - 邮件兼容内联样式"""
         rank = skill.get("rank", 0)
         name = skill.get("name", "")
         rank_delta = skill.get("rank_delta", 0)
         installs = skill.get("installs", 0)
-        installs_delta = skill.get("installs_delta", 0)
         url = skill.get("url", f"{self.base_url}/{skill.get('owner', '')}/{name}")
 
-        # 排名变化指示
+        # 排名变化徽章
         if rank_delta > 0:
-            rank_indicator = f'<span class="rank-change rank-up">+{rank_delta}</span>'
+            rank_badge = f'<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 10px; background-color: #D1FAE5; color: #059669;">+{rank_delta}</span>'
         elif rank_delta < 0:
-            rank_indicator = f'<span class="rank-change rank-down">{rank_delta}</span>'
+            rank_badge = f'<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 10px; background-color: #FEE2E2; color: #DC2626;">{rank_delta}</span>'
         else:
-            rank_indicator = '<span class="rank-change rank-same">-</span>'
+            rank_badge = '<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 10px; background-color: #F1F5F9; color: #64748B;">-</span>'
 
         # 安装量格式化
-        if installs >= 1000:
-            installs_display = f"{installs/1000:.1f}k"
-        else:
-            installs_display = f"{installs:,}"
+        installs_display = f"{installs/1000:.1f}k" if installs >= 1000 else f"{installs:,}"
 
         # 分类标签
-        category_badge = ""
-        if skill.get("category_zh"):
-            category_badge = f'<span class="badge badge-category">{skill.get("category_zh")}</span>'
+        category = skill.get("category_zh", "")
+        cat_html = f'<span style="display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 500; border-radius: 12px; background-color: #DBEAFE; color: #2563EB;">{category}</span>' if category else ""
 
-        # 解决的问题标签
-        solves_html = ""
-        if show_details and skill.get("solves"):
-            solves_tags = [f'<span class="solve-tag">{s}</span>' for s in skill.get("solves", [])[:4]]
-            solves_html = f'<div class="solves-list">{"".join(solves_tags)}</div>'
+        # 摘要
+        summary = skill.get("summary", "")
+        sum_html = f'<p style="margin: 0 0 8px 0; color: #475569; font-size: 13px; line-height: 1.5;">{summary}</p>' if summary else ""
 
-        # 详细信息
-        details_html = ""
-        if show_details:
-            summary = skill.get("summary", "")
-            description = skill.get("description", "")
+        # 标签
+        solves = skill.get("solves", [])[:3]
+        tags = "".join([f'<span style="display: inline-block; padding: 3px 8px; margin: 2px; font-size: 11px; background-color: #F1F5F9; color: #475569; border-radius: 4px;">{s}</span>' for s in solves])
+        tags_html = f'<div style="margin-top: 8px;">{tags}</div>' if solves else ""
 
-            detail_parts = []
-            if summary:
-                detail_parts.append(f'<p style="margin: 0 0 8px; color: #4b5563; font-size: 14px; line-height: 1.5;">{summary}</p>')
-            if description:
-                detail_parts.append(f'<p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.5;">{description}</p>')
-
-            details_html = "\n".join(detail_parts)
-
-        return f"""        <div class="skill-card">
-            <div class="skill-main">
-                <span class="skill-rank">#{rank}</span>
-                <span class="skill-name"><a href="{url}">{name}</a></span>
-                <div class="skill-stats">
-                    {rank_indicator}
-                    <span class="installs">{installs_display} installs</span>
-                </div>
+        return f'''<div style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; margin-bottom: 0;">
+            <div style="display: flex; align-items: center; padding: 12px 14px; background: linear-gradient(to right, #F8FAFC, #FFFFFF); border-bottom: 1px solid #F1F5F9;">
+                <span style="font-size: 16px; font-weight: 700; color: #2563EB; margin-right: 10px;">#{rank}</span>
+                <a href="{url}" style="flex: 1; font-weight: 600; color: #1E293B; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{name}</a>
+                <span style="margin: 0 8px;">{rank_badge}</span>
+                <span style="font-size: 12px; color: #64748B; font-weight: 500;">{installs_display}</span>
             </div>
-            <div class="skill-content">
-                {details_html}
-                <div style="margin-top: 10px;">
-                    {category_badge}
-                    {solves_html}
-                </div>
+            <div style="padding: 12px 14px;">
+                {sum_html}
+                <div>{cat_html}{tags_html}</div>
             </div>
-        </div>"""
+        </div>'''
 
     def _format_compact_card(self, skill: Dict, trend: str = None, is_new: bool = False, is_surging: bool = False) -> str:
-        """格式化紧凑卡片"""
+        """格式化紧凑卡片 - 邮件兼容内联样式"""
         rank = skill.get("rank", 0)
         name = skill.get("name", "")
         url = skill.get("url", f"{self.base_url}/{skill.get('owner', '')}/{name}")
         installs = skill.get("installs", 0)
+        installs_display = f"{installs/1000:.1f}k" if installs >= 1000 else f"{installs:,}"
 
-        if installs >= 1000:
-            installs_display = f"{installs/1000:.1f}k"
-        else:
-            installs_display = f"{installs:,}"
-
-        # 变化指示
-        change_html = ""
+        # 徽章样式
         if is_new:
-            change_html = '<span class="badge badge-new">NEW</span>'
+            badge = '<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 10px; background-color: #10B981; color: #FFFFFF;">新</span>'
         elif is_surging:
             rate = skill.get("installs_rate", 0)
-            change_html = f'<span class="badge badge-surging">+{int(rate*100)}%</span>'
+            badge = f'<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 10px; background-color: #F97316; color: #FFFFFF;">+{int(rate*100)}%</span>'
         elif trend == "up":
-            rank_delta = skill.get("rank_delta", 0)
-            change_html = f'<span class="rank-change rank-up">+{rank_delta}</span>'
+            delta = skill.get("rank_delta", 0)
+            badge = f'<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 10px; background-color: #D1FAE5; color: #059669;">+{delta}</span>'
         elif trend == "down":
-            rank_delta = skill.get("rank_delta", 0)
-            change_html = f'<span class="rank-change rank-down">{rank_delta}</span>'
+            delta = skill.get("rank_delta", 0)
+            badge = f'<span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 10px; background-color: #FEE2E2; color: #DC2626;">{delta}</span>'
+        else:
+            badge = ""
 
-        summary_html = ""
-        if skill.get("summary"):
-            summary_html = f'<div style="padding: 8px 14px 0; font-size: 13px; color: #6b7280; line-height: 1.5;">{skill.get("summary")}</div>'
-
-        return f"""            <div class="compact-card">
-                {change_html}
-                <span style="font-weight: 600; min-width: 32px; font-size: 13px;">#{rank}</span>
-                <span style="flex-grow: 1; margin: 0 10px;">
-                    <a href="{url}" style="color: #1a1a2e; text-decoration: none; font-size: 14px; font-weight: 500;">{name}</a>
-                </span>
-                <span style="color: #6b7280; font-size: 12px;">{installs_display}</span>
-            </div>{summary_html}"""
+        return f'''<div style="display: flex; align-items: center; padding: 10px 14px; margin-bottom: 8px; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px;">
+            {badge}
+            <span style="font-weight: 700; color: #2563EB; min-width: 36px; margin: 0 10px;">#{rank}</span>
+            <a href="{url}" style="flex: 1; color: #1E293B; font-weight: 500; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{name}</a>
+            <span style="font-size: 12px; color: #64748B;">{installs_display}</span>
+        </div>'''
 
     def _format_dropped_card(self, skill: Dict) -> str:
-        """格式化掉榜卡片"""
+        """格式化掉榜卡片 - 邮件兼容内联样式"""
         name = skill.get("name", "")
         yesterday_rank = skill.get("yesterday_rank", 0)
 
-        return f"""            <div class="compact-card" style="border-left-color: #dc2626; background-color: #fef2f2;">
-                <span class="badge badge-alert">DROPPED</span>
-                <span style="font-weight: 600; min-width: 32px; font-size: 13px;">#{yesterday_rank}</span>
-                <span style="flex-grow: 1; margin: 0 10px; color: #6b7280; font-size: 14px;">{name}</span>
-            </div>"""
+        return f'''<div style="display: flex; align-items: center; padding: 10px 14px; margin-bottom: 8px; background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px;">
+            <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 10px; background-color: #EF4444; color: #FFFFFF;">出</span>
+            <span style="font-weight: 700; color: #DC2626; min-width: 36px; margin: 0 10px;">#{yesterday_rank}</span>
+            <span style="flex: 1; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{name}</span>
+        </div>'''
 
     def _section_html(self, title: str, content: str) -> str:
-        """生成一个完整的 section"""
-        return f"""        <div class="section">
-            <h2 class="section-title">{title}</h2>
+        """生成一个完整的 section - 邮件兼容内联样式"""
+        return f'''
+        <div style="padding: 24px; border-bottom: 1px solid #E2E8F0;">
+            <h2 style="display: flex; align-items: center; margin: 0 0 20px 0; font-size: 12px; font-weight: 600; color: #2563EB; text-transform: uppercase; letter-spacing: 2px;">
+                {title}
+                <span style="flex: 1; height: 1px; margin-left: 12px; background: linear-gradient(to right, #BFDBFE, transparent);"></span>
+            </h2>
             {content}
-        </div>"""
+        </div>'''
 
 
 def generate_email_html(trends: Dict, date: str) -> str:
