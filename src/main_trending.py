@@ -12,7 +12,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from src.config import (
-    OPENAI_API_KEY,
+    LLM_API_KEY,
     RESEND_API_KEY,
     EMAIL_TO,
     RESEND_FROM_EMAIL,
@@ -54,9 +54,9 @@ def main():
     print_banner()
 
     # 检查环境变量
-    if not OPENAI_API_KEY:
-        print("[错误] OPENAI_API_KEY 环境变量未设置")
-        print("   请设置 OpenAI 兼容 API 的 Key")
+    if not LLM_API_KEY:
+        print("[错误] LLM_API_KEY 环境变量未设置")
+        print("   请设置 Apimart（或 OpenAI 兼容）API Key")
         sys.exit(1)
 
     if not RESEND_API_KEY:

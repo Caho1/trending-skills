@@ -55,32 +55,41 @@ class HTMLReporter:
 
     def _get_header(self, date: str) -> str:
         """生成 HTML 头部 - 邮件兼容内联样式"""
-        return """<!DOCTYPE html>
+        # 邮件优先使用 table 布局，避免 flex/复杂 CSS 在 Outlook 等客户端渲染异常
+        return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>技能趋势日报</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>技能趋势日报</title>
 </head>
-<body style="margin: 0; padding: 16px; background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-    <div style="max-width: 680px; margin: 0 auto; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%); color: #FFFFFF; padding: 32px 24px; text-align: center;">
-            <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">技能趋势日报</h1>
-            <p style="margin: 12px 0 0 0; color: #BFDBFE; font-size: 14px;">""" + date + """</p>
-        </div>"""
+<body style="margin:0; padding:0; background-color:#F1F5F9; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F5F9; border-collapse:collapse;">
+    <tr>
+      <td align="center" style="padding:16px;">
+        <table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="width:680px; max-width:680px; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px; overflow:hidden; border-collapse:separate;">
+          <tr>
+            <td style="background-color:#2563EB; color:#FFFFFF; padding:32px 24px; text-align:center;">
+              <div style="margin:0; font-size:28px; font-weight:700; line-height:1.2;">技能趋势日报</div>
+              <div style="margin-top:12px; color:#BFDBFE; font-size:14px; line-height:1.4;">{date}</div>
+            </td>
+          </tr>"""
 
     def _get_footer(self, date: str) -> str:
         """生成 HTML 尾部 - 邮件兼容内联样式"""
         return """
-        <!-- Footer -->
-        <div style="background-color: #F8FAFC; text-align: center; padding: 24px; border-top: 1px solid #E2E8F0;">
-            <p style="margin: 0; color: #64748B; font-size: 13px;">
-                由 <a href="https://skills.sh/trending" style="color: #2563EB; font-weight: 600; text-decoration: none;">Skills.sh</a> 提供支持
-            </p>
-            <p style="margin: 8px 0 0 0; color: #94A3B8; font-size: 12px;">数据来源: skills.sh/trending</p>
-        </div>
-    </div>
+          <tr>
+            <td style="background-color:#F8FAFC; text-align:center; padding:24px; border-top:1px solid #E2E8F0;">
+              <p style="margin:0; color:#64748B; font-size:13px; line-height:1.5;">
+                由 <a href="https://skills.sh/trending" style="color:#2563EB; font-weight:600; text-decoration:none;">Skills.sh</a> 提供支持
+              </p>
+              <p style="margin:8px 0 0 0; color:#94A3B8; font-size:12px; line-height:1.5;">数据来源: skills.sh/trending</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>"""
 
@@ -213,18 +222,31 @@ class HTMLReporter:
         tags = "".join([f'<span style="display: inline-block; padding: 3px 8px; margin: 2px; font-size: 11px; background-color: #F1F5F9; color: #475569; border-radius: 4px;">{s}</span>' for s in solves])
         tags_html = f'<div style="margin-top: 8px;">{tags}</div>' if solves else ""
 
-        return f'''<div style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; margin-bottom: 0;">
-            <div style="display: flex; align-items: center; padding: 12px 14px; background: linear-gradient(to right, #F8FAFC, #FFFFFF); border-bottom: 1px solid #F1F5F9;">
-                <span style="font-size: 16px; font-weight: 700; color: #2563EB; margin-right: 10px;">#{rank}</span>
-                <a href="{url}" style="flex: 1; font-weight: 600; color: #1E293B; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{name}</a>
-                <span style="margin: 0 8px;">{rank_badge}</span>
-                <span style="font-size: 12px; color: #64748B; font-weight: 500;">{installs_display}</span>
-            </div>
-            <div style="padding: 12px 14px;">
-                {sum_html}
-                <div>{cat_html}{tags_html}</div>
-            </div>
-        </div>'''
+        return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:separate; border-spacing:0; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:10px;">
+            <tr>
+                <td style="padding:12px 14px; background-color:#F8FAFC; border-bottom:1px solid #F1F5F9;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                        <tr>
+                            <td style="width:52px; white-space:nowrap; font-size:16px; font-weight:700; color:#2563EB;">#{rank}</td>
+                            <td style="font-size:14px; font-weight:600; line-height:1.4; color:#1E293B; padding-right:8px;">
+                                <a href="{url}" style="color:#1E293B; text-decoration:none;">{name}</a>
+                            </td>
+                            <td align="right" style="white-space:nowrap;">
+                                {rank_badge}
+                                <span style="font-size:12px; color:#64748B; font-weight:500; margin-left:8px;">{installs_display}</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:12px 14px;">
+                    {sum_html}
+                    <div style="margin-top:4px;">{cat_html}</div>
+                    {tags_html}
+                </td>
+            </tr>
+        </table>'''
 
     def _format_compact_card(self, skill: Dict, trend: str = None, is_new: bool = False, is_surging: bool = False) -> str:
         """格式化紧凑卡片 - 邮件兼容内联样式"""
@@ -249,34 +271,65 @@ class HTMLReporter:
         else:
             badge = ""
 
-        return f'''<div style="display: flex; align-items: center; padding: 10px 14px; margin-bottom: 8px; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 8px;">
-            {badge}
-            <span style="font-weight: 700; color: #2563EB; min-width: 36px; margin: 0 10px;">#{rank}</span>
-            <a href="{url}" style="flex: 1; color: #1E293B; font-weight: 500; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{name}</a>
-            <span style="font-size: 12px; color: #64748B;">{installs_display}</span>
-        </div>'''
+        return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+            <tr>
+                <td style="padding:0 0 8px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:separate; border-spacing:0; background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:8px;">
+                        <tr>
+                            <td style="padding:10px 14px;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                                    <tr>
+                                        <td style="width:40px; white-space:nowrap; padding-right:8px;">{badge}</td>
+                                        <td style="width:56px; white-space:nowrap; font-weight:700; color:#2563EB;">#{rank}</td>
+                                        <td style="font-size:13px; font-weight:500; color:#1E293B; line-height:1.4;">
+                                            <a href="{url}" style="color:#1E293B; text-decoration:none;">{name}</a>
+                                        </td>
+                                        <td align="right" style="white-space:nowrap; font-size:12px; color:#64748B;">{installs_display}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>'''
 
     def _format_dropped_card(self, skill: Dict) -> str:
         """格式化掉榜卡片 - 邮件兼容内联样式"""
         name = skill.get("name", "")
         yesterday_rank = skill.get("yesterday_rank", 0)
 
-        return f'''<div style="display: flex; align-items: center; padding: 10px 14px; margin-bottom: 8px; background-color: #FEF2F2; border: 1px solid #FECACA; border-radius: 8px;">
-            <span style="display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 10px; background-color: #EF4444; color: #FFFFFF;">出</span>
-            <span style="font-weight: 700; color: #DC2626; min-width: 36px; margin: 0 10px;">#{yesterday_rank}</span>
-            <span style="flex: 1; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{name}</span>
-        </div>'''
+        return f'''<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+            <tr>
+                <td style="padding:0 0 8px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border-collapse:separate; border-spacing:0; background-color:#FEF2F2; border:1px solid #FECACA; border-radius:8px;">
+                        <tr>
+                            <td style="padding:10px 14px;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                                    <tr>
+                                        <td style="width:40px; white-space:nowrap; padding-right:8px;">
+                                            <span style="display:inline-block; padding:2px 8px; font-size:11px; font-weight:700; border-radius:10px; background-color:#EF4444; color:#FFFFFF;">出</span>
+                                        </td>
+                                        <td style="width:56px; white-space:nowrap; font-weight:700; color:#DC2626;">#{yesterday_rank}</td>
+                                        <td style="font-size:13px; color:#64748B; line-height:1.4;">{name}</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>'''
 
     def _section_html(self, title: str, content: str) -> str:
         """生成一个完整的 section - 邮件兼容内联样式"""
         return f'''
-        <div style="padding: 24px; border-bottom: 1px solid #E2E8F0;">
-            <h2 style="display: flex; align-items: center; margin: 0 0 20px 0; font-size: 12px; font-weight: 600; color: #2563EB; text-transform: uppercase; letter-spacing: 2px;">
-                {title}
-                <span style="flex: 1; height: 1px; margin-left: 12px; background: linear-gradient(to right, #BFDBFE, transparent);"></span>
-            </h2>
-            {content}
-        </div>'''
+          <tr>
+            <td style="padding:24px; border-bottom:1px solid #E2E8F0;">
+              <p style="margin:0 0 16px 0; font-size:12px; font-weight:600; color:#2563EB; text-transform:uppercase; letter-spacing:2px; line-height:1.4;">{title}</p>
+              {content}
+            </td>
+          </tr>'''
 
 
 def generate_email_html(trends: Dict, date: str) -> str:

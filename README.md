@@ -24,7 +24,7 @@
 
 ## 项目简介
 
-**Skills Trending Daily** 是一个自动化技能趋势追踪系统。它每天从 [skills.sh/trending](https://skills.sh/trending) 获取最新的技能排行榜，使用 Claude AI 对热门技能进行智能分析和分类，计算排名变化趋势，并通过 Resend 发送专业的 HTML 邮件报告。
+**Skills Trending Daily** 是一个自动化技能趋势追踪系统。它每天从 [skills.sh/trending](https://skills.sh/trending) 获取最新的技能排行榜，使用 Apimart（`gemini-3-pro-preview`）对热门技能进行智能分析和分类，计算排名变化趋势，并通过 Resend 发送专业的 HTML 邮件报告。
 
 ### 为什么需要这个项目？
 
@@ -43,7 +43,7 @@
 |-----|------|
 | **排行榜抓取** | 使用 Playwright 动态渲染获取 Top 100 技能排行 |
 | **详情抓取** | 深度抓取热门技能的详细信息 |
-| **AI 分析** | Claude AI 自动总结、分类、提取价值 |
+| **AI 分析** | Apimart API（Gemini）自动总结、分类、提取价值 |
 | **趋势计算** | 排名变化、安装量变化、新晋/掉榜检测 |
 | **邮件报告** | 专业 HTML 邮件，每个技能可点击跳转 |
 | **数据存储** | SQLite 存储历史数据，支持趋势分析 |
@@ -73,9 +73,9 @@ Skills Trending Daily - 2026-01-24
 └─────────────────────────────────────────────────────────────────┘
 
   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-  │   GitHub     │      │   Playwright │      │    Claude    │
+  │   GitHub     │      │   Playwright │      │     LLM      │
   │   Actions    │ ──▶ │  Skills      │ ──▶ │  Summarizer │
-  │  (Cron Daily)│      │  Fetcher     │      │     AI       │
+  │  (Cron Daily)│      │  Fetcher     │      │ (Apimart)    │
   └──────────────┘      └──────┬───────┘      └──────┬───────┘
                                │                     │
                                ▼                     │
@@ -122,7 +122,7 @@ Skills Trending Daily - 2026-01-24
 ### 环境要求
 
 - Python 3.11+
-- Claude API Key（支持智谱代理）
+- Apimart API Key
 - Resend API Key
 
 ### 安装
@@ -153,7 +153,7 @@ nano .env
 
 ```bash
 # 设置环境变量
-export ZHIPU_API_KEY="your_api_key"
+export LLM_API_KEY="your_apimart_api_key"
 export RESEND_API_KEY="your_resend_key"
 export EMAIL_TO="your_email@example.com"
 
@@ -169,8 +169,11 @@ python src/main_trending.py
 
 | 变量 | 必需 | 说明 | 默认值 |
 |-----|------|------|--------|
-| `ZHIPU_API_KEY` | Yes | Claude API Key（智谱代理） | - |
-| `ANTHROPIC_BASE_URL` | No | Claude API 地址 | `https://open.bigmodel.cn/api/anthropic` |
+| `LLM_API_KEY` | Yes | Apimart API Key | - |
+| `LLM_BASE_URL` | No | Chat Completions 端点 | `https://api.apimart.ai/v1/chat/completions` |
+| `LLM_MODEL` | No | 模型名 | `gemini-3-pro-preview` |
+| `LLM_MAX_RETRIES` | No | LLM 失败重试次数 | `3` |
+| `LLM_TIMEOUT` | No | LLM 请求超时（秒） | `180` |
 | `RESEND_API_KEY` | Yes | Resend API Key | - |
 | `EMAIL_TO` | Yes | 收件人邮箱 | - |
 | `RESEND_FROM_EMAIL` | No | 发件人邮箱 | `onboarding@resend.dev` |
@@ -216,7 +219,7 @@ sqlite3 data/trends.db "SELECT name, summary, category FROM skills_details WHERE
 
 1. Fork 本仓库
 2. 在 GitHub Settings > Secrets and variables > Actions 中添加：
-   - `ZHIPU_API_KEY`
+   - `LLM_API_KEY`
    - `RESEND_API_KEY`
    - `EMAIL_TO`（可选）
 3. 启用 Actions
@@ -312,7 +315,7 @@ skills-trending/
 |-----|------|
 | `skills_fetcher.py` | 使用 Playwright 抓取 skills.sh 榜单，支持动态渲染 |
 | `detail_fetcher.py` | 抓取单个技能的详细页面内容 |
-| `claude_summarizer.py` | 调用 Claude API 分析技能内容 |
+| `claude_summarizer.py` | 调用 Apimart Chat Completions 分析技能内容 |
 | `trend_analyzer.py` | 计算排名变化、新晋/掉榜、暴涨检测 |
 | `html_reporter.py` | 生成专业 HTML 邮件（无 emoji，可点击链接） |
 | `database.py` | SQLite 数据库操作，支持数据持久化 |
@@ -416,6 +419,6 @@ schedule:
 ## 致谢
 
 - [skills.sh](https://skills.sh) - 技能数据来源
-- [Anthropic](https://anthropic.com) - Claude AI
+- Apimart - LLM API 网关（Gemini）
 - [Resend](https://resend.com) - 邮件服务
 - [Playwright](https://playwright.dev) - 浏览器自动化

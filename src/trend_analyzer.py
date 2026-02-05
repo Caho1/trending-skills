@@ -122,7 +122,10 @@ class TrendAnalyzer:
         """
         top_20 = today[:20]
 
-        for skill in top_20:
+        for i, skill in enumerate(top_20, 1):
+            # 保存原始排名，使用 TOP 20 内的排名显示
+            skill["original_rank"] = skill.get("rank", i)
+            skill["rank"] = i
             name = skill["name"]
             if name in ai_summaries:
                 summary = ai_summaries[name]

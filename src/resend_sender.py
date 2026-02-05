@@ -42,18 +42,27 @@ class ResendSender:
             return {"success": False, "message": "收件人邮箱为空"}
 
         try:
-            print(f"[发送] 正在发送邮件到: {to}")
+            # 处理逗号分隔的多个收件人，每人单独发送
+            recipients = [email.strip() for email in to.split(",") if email.strip()]
+            print(f"[发送] 正在发送邮件到 {len(recipients)} 个收件人...")
 
-            params = {
-                "from": from_email,
-                "to": [to],
-                "subject": subject,
-                "html": html_content,
-            }
+            success_count = 0
+            last_id = None
 
-            response = resend.Emails.send(params)
+            for recipient in recipients:
+                params = {
+                    "from": from_email,
+                    "to": [recipient],
+                    "subject": subject,
+                    "html": html_content,
+                }
 
-            print(f"[OK] 邮件发送成功! ID: {response.get('id')}")
+                response = resend.Emails.send(params)
+                last_id = response.get('id')
+                success_count += 1
+                print(f"  [OK] {recipient}")
+
+            print(f"[OK] 邮件发送成功! 共 {success_count} 封")
 
             return {
                 "success": True,
@@ -97,21 +106,30 @@ class ResendSender:
             return {"success": False, "message": "收件人邮箱为空"}
 
         try:
-            print(f"[发送] 正在发送邮件到: {to}")
+            # 处理逗号分隔的多个收件人，每人单独发送
+            recipients = [email.strip() for email in to.split(",") if email.strip()]
+            print(f"[发送] 正在发送邮件到 {len(recipients)} 个收件人...")
 
-            params = {
-                "from": from_email,
-                "to": [to],
-                "subject": subject,
-                "html": html_content,
-            }
+            success_count = 0
+            last_id = None
 
-            if text_content:
-                params["text"] = text_content
+            for recipient in recipients:
+                params = {
+                    "from": from_email,
+                    "to": [recipient],
+                    "subject": subject,
+                    "html": html_content,
+                }
 
-            response = resend.Emails.send(params)
+                if text_content:
+                    params["text"] = text_content
 
-            print(f"[OK] 邮件发送成功! ID: {response.get('id')}")
+                response = resend.Emails.send(params)
+                last_id = response.get('id')
+                success_count += 1
+                print(f"  [OK] {recipient}")
+
+            print(f"[OK] 邮件发送成功! 共 {success_count} 封")
 
             return {
                 "success": True,

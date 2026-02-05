@@ -72,14 +72,21 @@ class SkillsFetcher:
                     await page.goto(self.trending_url, wait_until="domcontentloaded", timeout=60000)
 
                     # 等待页面稳定
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(3)
 
-                    # 尝试滚动页面以确保内容加载
-                    try:
-                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+                    # 多次滚动页面以加载完整数据
+                    print("  正在滚动加载完整数据...")
+                    for scroll_i in range(5):
+                        # 滚动到页面顶部
+                        await page.evaluate("window.scrollTo(0, 0)")
+                        await asyncio.sleep(1)
+                        # 滚动到页面底部
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                         await asyncio.sleep(2)
-                    except:
-                        pass
+
+                    # 最后滚动回顶部确保加载完整
+                    await page.evaluate("window.scrollTo(0, 0)")
+                    await asyncio.sleep(2)
 
                     # 获取页面文本内容
                     content = await page.evaluate("() => document.body.innerText")
@@ -190,8 +197,8 @@ class SkillsFetcher:
                 print(f"  使用模式 {i+1} 匹配到 {len(skills_dict)} 个技能")
                 break
 
-        # 按排名排序
-        skills = sorted(skills_dict.values(), key=lambda x: x["rank"])
+        # 按排名排序，只取前20
+        skills = sorted(skills_dict.values(), key=lambda x: x["rank"])[:20]
 
         return skills
 

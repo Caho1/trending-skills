@@ -208,7 +208,7 @@ Environment variables (optional, for fetching):
 
 ```bash
 # For AI summaries
-ZHIPU_API_KEY=your_key
+LLM_API_KEY=your_apimart_key
 
 # For database
 DB_PATH=data/trends.db

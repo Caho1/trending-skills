@@ -10,14 +10,31 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 # ============================================================================
-# OpenAI 兼容 API 配置
+# LLM 配置（Apimart Chat Completions / OpenAI 兼容）
 # ============================================================================
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Apimart 文档给的完整端点通常是 /v1/chat/completions，因此这里默认按“完整 URL”使用。
+LLM_BASE_URL = (
+    os.getenv("LLM_BASE_URL")
+    or os.getenv("APIMART_BASE_URL")
+    or os.getenv("OPENAI_BASE_URL")
+    or "https://api.apimart.ai/v1/chat/completions"
+)
+LLM_API_KEY = (
+    os.getenv("LLM_API_KEY")
+    or os.getenv("APIMART_API_KEY")
+    or os.getenv("OPENAI_API_KEY")
+)
 
 # 模型配置
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3-pro-preview")
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "8192"))
+LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+LLM_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "3"))
+LLM_TIMEOUT = float(os.getenv("LLM_TIMEOUT", "180"))
+
+# 兼容旧变量名（历史代码可能仍引用 OPENAI_*）
+OPENAI_BASE_URL = LLM_BASE_URL
+OPENAI_API_KEY = LLM_API_KEY
 
 # ============================================================================
 # RSS 配置
