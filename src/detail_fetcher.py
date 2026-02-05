@@ -135,6 +135,9 @@ class DetailFetcher:
         """
         soup = BeautifulSoup(html_content, "lxml")
 
+        # 提取简介（详情页 h1 后的首段说明）
+        tagline = self._extract_tagline(soup)
+
         # 提取 "When to use" 部分
         when_to_use = self._extract_when_to_use(soup)
 
@@ -154,10 +157,69 @@ class DetailFetcher:
             "owner": owner,
             "url": url,
             "html_content": html_content,
+            "tagline": tagline,
             "when_to_use": when_to_use,
             "rules": rules,
             "rules_count": len(rules)
         }
+
+    def _extract_tagline(self, soup: BeautifulSoup) -> str:
+        """
+        提取详情页简介（通常为 h1 后的第一段文字）
+
+        Args:
+            soup: BeautifulSoup 对象
+
+        Returns:
+            简介文本
+        """
+        h1 = soup.find("h1")
+        if not h1:
+            return ""
+
+        p = h1.find_next("p")
+        if not p:
+            return ""
+
+        text = p.get_text(" ", strip=True)
+        return text.strip()
+
+    def _extract_section_text(self, soup: BeautifulSoup, keywords: List[str], max_chars: int = 800) -> str:
+        """
+        从页面中根据标题关键词提取一个 section 的正文文本（用于 When to use 等）
+
+        Args:
+            soup: BeautifulSoup 对象
+            keywords: 标题关键词（小写）
+            max_chars: 最大字符数，避免抓取过长内容
+
+        Returns:
+            section 文本
+        """
+        headings = soup.find_all(["h2", "h3"])
+        for h in headings:
+            title = h.get_text(" ", strip=True).lower()
+            if not title:
+                continue
+            if not any(k in title for k in keywords):
+                continue
+
+            parts: List[str] = []
+            total = 0
+            for sib in h.find_next_siblings():
+                if sib.name in ("h2", "h3"):
+                    break
+                chunk = sib.get_text("\n", strip=True)
+                if not chunk:
+                    continue
+                parts.append(chunk)
+                total += len(chunk)
+                if total >= max_chars:
+                    break
+
+            return "\n".join(parts).strip()
+
+        return ""
 
     def _extract_when_to_use(self, soup: BeautifulSoup) -> str:
         """
@@ -169,27 +231,23 @@ class DetailFetcher:
         Returns:
             when_to_use 文本
         """
-        # 尝试不同的选择器
-        selectors = [
-            "h2#when-to-use",
-            '[id="when-to-use"]',
-            "h2:contains('When to use')",
-            "h2:contains('When to Use')",
-        ]
+        # 优先使用标题定位，兼容 "When to Use This Skill" 等变体
+        section = self._extract_section_text(soup, keywords=["when to use"])
+        if section:
+            return section
 
-        for selector in selectors:
-            element = soup.select_one(selector)
-            if element:
-                # 获取下一个兄弟元素（通常是内容）
-                content = element.find_next_sibling()
-                if content:
-                    return content.get_text(strip=True)
-
-        # 如果找不到标题，尝试在整个页面中搜索
-        text = soup.get_text()
-        match = re.search(r'When to use\s*\n\s*(.+?)(?:\n\s*##|\n\s*###|\Z)', text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
+        # 兜底：基于纯文本行扫描
+        lines = [l.strip() for l in soup.get_text("\n", strip=True).split("\n") if l.strip()]
+        for i, line in enumerate(lines):
+            if line.lower().startswith("when to use"):
+                # 取后续若干行，直到遇到下一个可能的标题（简单启发式）
+                collected: List[str] = []
+                for next_line in lines[i + 1 : i + 15]:
+                    low = next_line.lower()
+                    if low.startswith(("what is ", "how to ", "install ", "commands", "related ", "reference ", "common ")):
+                        break
+                    collected.append(next_line)
+                return "\n".join(collected).strip()
 
         return ""
 

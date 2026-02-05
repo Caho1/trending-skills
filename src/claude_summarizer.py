@@ -4,6 +4,7 @@ LLM Summarizer - AI 总结和分类技能
 """
 import json
 import random
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -49,9 +50,9 @@ SYSTEM_PROMPT = """你是一个“结构化信息抽取 + 分类”助手。
 - 只输出一个 JSON 数组（不要 Markdown、不要代码块、不要解释文字）。
 - 每个数组元素都是一个对象，且必须包含字段：name、summary、description、use_case、solves、category、category_zh。
 - name 必须与输入的技能名称完全一致（区分大小写，不要补前后缀）。
-- summary：中文一句话，≤30字；不要换行；不要带引号/括号等多余符号。
-- description：中文 50-100字；不要虚构未提供的具体数字/事实；信息不足时用更泛化但仍有用的描述。
-- use_case：中文 1 句；描述典型使用场景与人群。
+- summary：中文一句话，20-50字；强调用户能获得的效果/收益；不要换行；不要带引号/括号等多余符号。
+- description：中文 50-100字；不要虚构未提供的具体数字/事实；尽量写清楚它能帮用户做什么、怎么用。
+- use_case：中文 1 句；描述典型使用场景与人群（尽量具体到“谁在什么情况下用它做什么”）。
 - solves：JSON 数组，3-5 个中文短语（每个尽量≤8字），去重，不要空值。
 - category：只能从给定的分类 key 中选择 1 个；category_zh 必须与 category 对应。
 
@@ -60,6 +61,9 @@ SYSTEM_PROMPT = """你是一个“结构化信息抽取 + 分类”助手。
 
 class ClaudeSummarizer:
     """AI 总结和分类技能"""
+
+    SUMMARY_MIN_LEN = 20
+    SUMMARY_MAX_LEN = 50
 
     def __init__(
         self,
@@ -215,7 +219,7 @@ URL: {detail.get('url')}
 可选分类: {category_text}
 
 输出格式（只输出 JSON，不要其他内容）:
-{{"name": "...", "summary": "中文≤30字", "description": "中文50-100字", "use_case": "使用场景", "solves": ["功能1", "功能2", "功能3"], "category": "分类key", "category_zh": "分类中文"}}"""
+{{"name": "...", "summary": "中文20-50字", "description": "中文50-100字", "use_case": "使用场景", "solves": ["功能1", "功能2", "功能3"], "category": "分类key", "category_zh": "分类中文"}}"""
 
     def _parse_single_response(self, text: str, detail: Dict) -> Dict:
         """解析单个技能的响应"""
@@ -395,6 +399,9 @@ URL: {detail.get('url')}
             skills_text += f"拥有者: {detail.get('owner')}\n"
             skills_text += f"URL: {detail.get('url')}\n"
 
+            if detail.get("tagline"):
+                skills_text += f"\n简介(原文): {detail.get('tagline')}\n"
+
             if detail.get("when_to_use"):
                 skills_text += f"\n用途说明:\n{detail.get('when_to_use')}\n"
 
@@ -419,7 +426,7 @@ URL: {detail.get('url')}
 
 【字段要求】（每个技能都要输出全部字段）
 1) name: 必须与输入名称完全一致
-2) summary: 中文一句话，≤30字
+2) summary: 中文一句话，20-50字，强调用户能获得的效果/收益
 3) description: 中文 50-100字，不要虚构具体数字/事实
 4) use_case: 中文 1 句，说明典型使用场景与人群
 5) solves: JSON 数组，3-5 个中文短语（去重）
@@ -439,6 +446,63 @@ URL: {detail.get('url')}
 """
 
         return prompt
+
+    def _clean_single_line(self, text: object) -> str:
+        if text is None:
+            return ""
+        cleaned = str(text).strip().replace("\r", " ").replace("\n", " ")
+        cleaned = " ".join(cleaned.split())
+        cleaned = cleaned.strip(' "\'“”‘’')
+        return cleaned
+
+    def _first_sentence(self, text: str) -> str:
+        cleaned = self._clean_single_line(text)
+        if not cleaned:
+            return ""
+        parts = re.split(r"[。！？.!?]", cleaned, maxsplit=1)
+        return (parts[0] or "").strip()
+
+    def _normalize_summary(
+        self,
+        summary: object,
+        description: object,
+        use_case: object,
+        solves: List[str],
+    ) -> str:
+        s = self._clean_single_line(summary)
+
+        if len(s) < self.SUMMARY_MIN_LEN:
+            desc = self._first_sentence(self._clean_single_line(description))
+            if desc:
+                s = desc
+
+        if len(s) < self.SUMMARY_MIN_LEN:
+            uc = self._first_sentence(self._clean_single_line(use_case))
+            if uc:
+                s = uc
+
+        if len(s) < self.SUMMARY_MIN_LEN:
+            best_solve = ""
+            for item in solves or []:
+                item = self._clean_single_line(item)
+                if item and item != "待分析":
+                    best_solve = item
+                    break
+
+            if best_solve:
+                s = f"帮助你{best_solve}，并提供可复用的操作指南"
+            else:
+                s = "帮助你快速完成常见任务，并提供可复用的操作指南"
+
+        if len(s) > self.SUMMARY_MAX_LEN:
+            s = s[: self.SUMMARY_MAX_LEN].rstrip()
+
+        if len(s) < self.SUMMARY_MIN_LEN:
+            padding = "，并附清晰步骤与注意事项"
+            if len(s) + len(padding) <= self.SUMMARY_MAX_LEN:
+                s = f"{s}{padding}"
+
+        return s
 
     def _parse_batch_response(self, result_text: str, original_details: List[Dict]) -> List[Dict]:
         """
@@ -540,10 +604,12 @@ URL: {detail.get('url')}
             if not solves:
                 solves = ["待分析"]
 
-            summary = raw.get("summary") or f"{name} 技能"
-            if not isinstance(summary, str):
-                summary = str(summary)
-            summary = summary.strip().replace("\r", " ").replace("\n", " ")
+            summary = self._normalize_summary(
+                raw.get("summary"),
+                raw.get("description"),
+                raw.get("use_case"),
+                solves,
+            )
 
             description = raw.get("description") or ""
             if not isinstance(description, str):
@@ -588,8 +654,8 @@ URL: {detail.get('url')}
             name = detail.get("name", "unknown")
             results.append({
                 "name": name,
-                "summary": f"{name} - AI 分析暂不可用",
-                "description": f"技能名称: {name}",
+                "summary": "技能信息暂不可用，建议点开详情查看用法与适用场景",
+                "description": f"技能名称: {name}（AI 分析暂不可用）",
                 "use_case": "待分析",
                 "solves": ["待分析"],
                 "category": "other",
